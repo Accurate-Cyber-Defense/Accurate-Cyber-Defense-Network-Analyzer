@@ -5,6 +5,7 @@ It enables cybersecurity professionals, ethical hackers, and network administrat
 This tool is ideal for identifying vulnerabilities, understanding packet behavior, and strengthening overall network security posture.
 
 **Key Features**
+
 Advanced Packet Disassembly: Accurate Cyber Defense can break down network packets at a granular level, revealing detailed protocol structures, headers, payloads, and meta-information for each captured packet.
 
 Hexadecimal Visualization: Provides a built-in hexadecimal viewer that allows users to analyze packet contents in their raw byte form. This feature is essential for spotting hidden data, malformed headers, and potential exploit payloads.
@@ -24,8 +25,8 @@ User-Friendly Interface: Intuitive interface with clear visualizations, color-co
 Cross-Platform Support: Available on major operating systems including Windows, Linux, and macOS.
 
 
+**🛡️ Use Cases**
 
-🛡️ Use Cases
 Network intrusion detection and analysis
 
 Ethical hacking and security auditing
@@ -34,11 +35,18 @@ Deep packet inspection and vulnerability research
 
 Incident response and digital forensics
 
+
 Training and cybersecurity education
 
-Clone the repository
+**Clone the repository**
 
 git clone https://github.com/Iankulani/Accurate-Cyber-Defense-Network-Analyzer.git
 
-sreenshots
+**sreenshots**
+
+![Screenshot (101)](https://github.com/user-attachments/assets/d451b85c-e859-4ebf-b91a-4d6c0138b219)
+
+
+
+
 
