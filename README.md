@@ -44,8 +44,8 @@ git clone https://github.com/Iankulani/Accurate-Cyber-Defense-Network-Analyzer.g
 
 **sreenshots**
 
-![Screenshot (101)](https://github.com/user-attachments/assets/d451b85c-e859-4ebf-b91a-4d6c0138b219)
 
+![Screenshot (102)](https://github.com/user-attachments/assets/99eb2483-d670-4508-a48a-facaddfb58e8)
 
 
 
