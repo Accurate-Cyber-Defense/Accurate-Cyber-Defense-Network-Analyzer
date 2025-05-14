@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accurate Cyber Defense Network Analyzer</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        :root {
+            --primary-blue: #1a237e;
+            --secondary-blue: #0d47a1;
+            --accent-blue: #2196f3;
+            --light-blue: #bbdefb;
+            --dark-blue: #0d1b2a;
+            --text-light: #e6f1ff;
+            --text-dark: #0a192f;
+        }
+
+        body {
+            font-family: 'Consolas', 'Courier New', monospace;
+            margin: 0;
+            padding: 0;
+            background-color: var(--dark-blue);
+            color: var(--text-light);
+            line-height: 1.6;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto 1fr 1fr;
+            gap: 20px;
+            padding: 20px;
+            height: 95vh;
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            background-color: var(--primary-blue);
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--accent-blue);
+        }
+
+        .ip-input-section {
+            display: flex;
+            gap: 10px;
+        }
+
+        .ip-input {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            background-color: var(--light-blue);
+            color: var(--text-dark);
+            font-size: 16px;
+            width: 250px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            background-color: var(--accent-blue);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background-color: #1976d2;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background-color: #d32f2f;
+        }
+
+        .btn-danger:hover {
+            background-color: #b71c1c;
+        }
+
+        .panel {
+            background-color: var(--secondary-blue);
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--accent-blue);
+        }
+
+        .panel-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--accent-blue);
+        }
+
+        .terminal {
+            background-color: #000;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            padding: 15px;
+            border-radius: 4px;
+            height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .terminal-input {
+            display: flex;
+            margin-top: 10px;
+        }
+
+        .terminal-prompt {
+            color: #0f0;
+            margin-right: 10px;
+        }
+
+        #terminalInput {
+            flex-grow: 1;
+            background-color: transparent;
+            border: none;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            outline: none;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 100%;
+            width: 100%;
+        }
+
+        .packet-details {
+            height: 300px;
+            overflow-y: auto;
+            background-color: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .packet-item {
+            margin-bottom: 10px;
+            padding: 8px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .packet-item:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .packet-protocol {
+            font-weight: bold;
+            color: var(--accent-blue);
+        }
+
+        .packet-source, .packet-destination {
+            font-family: 'Courier New', monospace;
+        }
+
+        .packet-size {
+            float: right;
+            color: #aaa;
+        }
+
+        .hex-viewer {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre;
+            background-color: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+
+        .status-bar {
+            grid-column: 1 / -1;
+            background-color: var(--primary-blue);
+            padding: 10px 20px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-active {
+            background-color: #4caf50;
+            box-shadow: 0 0 5px #4caf50;
+        }
+
+        .status-inactive {
+            background-color: #f44336;
+        }
+
+        .tab-container {
+            display: flex;
+            margin-bottom: 15px;
+            border-bottom: 1px solid var(--accent-blue);
+        }
+
+        .tab {
+            padding: 8px 15px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            border-bottom: 2px solid var(--accent-blue);
+            color: var(--accent-blue);
+            font-weight: bold;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent-blue);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #1976d2;
+        }
+
+        /* Animation for packet capture */
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(33, 150, 243, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(33, 150, 243, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(33, 150, 243, 0); }
+        }
+
+        .capture-active {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">Accurate Cyber Defense Network Analyzer</div>
+            <div class="ip-input-section">
+                <input type="text" id="ipInput" class="ip-input" placeholder="Enter IP Address:">
+                <button id="startBtn" class="btn">Start Monitoring</button>
+                <button id="stopBtn" class="btn btn-danger" disabled>Stop</button>
+            </div>
+        </header>
+
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">Network Traffic</div>
+                <div>
+                    <button id="clearPacketsBtn" class="btn btn-danger">Clear</button>
+                </div>
+            </div>
+            <div class="packet-details" id="packetList">
+                <!-- Packets will be displayed here -->
+                <div class="empty-state">No packets captured yet. Enter an IP address and start monitoring.</div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">Packet Analysis</div>
+                <div class="tab-container">
+                    <div class="tab active" data-tab="details">Details</div>
+                    <div class="tab" data-tab="hex">Hex View</div>
+                    <div class="tab" data-tab="disassembly">Disassembly</div>
+                </div>
+            </div>
+            <div class="tab-content active" id="detailsTab">
+                <div id="packetDetails">
+                    <div class="empty-state">Select a packet to view details</div>
+                </div>
+            </div>
+            <div class="tab-content" id="hexTab">
+                <div class="hex-viewer" id="hexViewer">
+                    <div class="empty-state">Select a packet to view hex data</div>
+                </div>
+            </div>
+            <div class="tab-content" id="disassemblyTab">
+                <div class="hex-viewer" id="disassemblyViewer">
+                    <div class="empty-state">Select a packet to view disassembly</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">Traffic Statistics</div>
+                <div>
+                    <button id="refreshChartsBtn" class="btn">Refresh</button>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="protocolChart"></canvas>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">Terminal</div>
+                <div>
+                    <button id="clearTerminalBtn" class="btn btn-danger">Clear</button>
+                </div>
+            </div>
+            <div class="terminal" id="terminalOutput">
+                Accurate Cyber Defense Network Analyzer v1.0
+                Type 'help' for available commands
+                >
+            </div>
+            <div class="terminal-input">
+                <span class="terminal-prompt">></span>
+                <input type="text" id="terminalInput" autocomplete="off">
+            </div>
+        </div>
+
+        <div class="status-bar">
+            <div class="status-item">
+                <div class="status-indicator status-inactive" id="statusIndicator"></div>
+                <span>Status: <span id="statusText">Inactive</span></span>
+            </div>
+            <div class="status-item">
+                <span>Packets Captured: <span id="packetCount">0</span></span>
+            </div>
+            <div class="status-item">
+                <span>Monitoring IP: <span id="monitoringIp">None</span></span>
+            </div>
+            <div class="status-item">
+                <span>CPU Usage: <span id="cpuUsage">0%</span></span>
+            </div>
+            <div class="status-item">
+                <span>Memory: <span id="memoryUsage">0 MB</span></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let isMonitoring = false;
+        let targetIp = '';
+        let packets = [];
+        let protocolStats = {
+            'TCP': 0,
+            'UDP': 0,
+            'ICMP': 0,
+            'HTTP': 0,
+            'HTTPS': 0,
+            'DNS': 0,
+            'Other': 0
+        };
+        let terminalHistory = [];
+        let historyIndex = -1;
+        let socket;
+
+        // DOM elements
+        const ipInput = document.getElementById('ipInput');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const clearPacketsBtn = document.getElementById('clearPacketsBtn');
+        const packetList = document.getElementById('packetList');
+        const packetDetails = document.getElementById('packetDetails');
+        const hexViewer = document.getElementById('hexViewer');
+        const disassemblyViewer = document.getElementById('disassemblyViewer');
+        const protocolChartCtx = document.getElementById('protocolChart').getContext('2d');
+        const terminalOutput = document.getElementById('terminalOutput');
+        const terminalInput = document.getElementById('terminalInput');
+        const clearTerminalBtn = document.getElementById('clearTerminalBtn');
+        const refreshChartsBtn = document.getElementById('refreshChartsBtn');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        const packetCount = document.getElementById('packetCount');
+        const monitoringIp = document.getElementById('monitoringIp');
+        const cpuUsage = document.getElementById('cpuUsage');
+        const memoryUsage = document.getElementById('memoryUsage');
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        // Chart instance
+        let protocolChart;
+
+        // Initialize the application
+        function init() {
+            setupEventListeners();
+            initCharts();
+            updateSystemStats();
+            simulateNetworkTraffic(); // For demo purposes only
+        }
+
+        // Set up event listeners
+        function setupEventListeners() {
+            startBtn.addEventListener('click', startMonitoring);
+            stopBtn.addEventListener('click', stopMonitoring);
+            clearPacketsBtn.addEventListener('click', clearPackets);
+            clearTerminalBtn.addEventListener('click', clearTerminal);
+            refreshChartsBtn.addEventListener('click', refreshCharts);
+            terminalInput.addEventListener('keydown', handleTerminalInput);
+            
+            // Tab switching
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tabContents.forEach(c => c.classList.remove('active'));
+                    
+                    tab.classList.add('active');
+                    const tabId = tab.getAttribute('data-tab') + 'Tab';
+                    document.getElementById(tabId).classList.add('active');
+                });
+            });
+        }
+
+        // Initialize charts
+        function initCharts() {
+            protocolChart = new Chart(protocolChartCtx, {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(protocolStats),
+                    datasets: [{
+                        data: Object.values(protocolStats),
+                        backgroundColor: [
+                            '#2196F3',
+                            '#00BCD4',
+                            '#4CAF50',
+                            '#FFC107',
+                            '#FF9800',
+                            '#9C27B0',
+                            '#F44336'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                color: '#e6f1ff'
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Protocol Distribution',
+                            color: '#e6f1ff'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Start monitoring the specified IP
+        function startMonitoring() {
+            const ip = ipInput.value.trim();
+            
+            if (!isValidIp(ip)) {
+                terminalOutput.textContent += '\nError: Invalid IP address format';
+                terminalOutput.scrollTop = terminalOutput.scrollHeight;
+                return;
+            }
+            
+            targetIp = ip;
+            isMonitoring = true;
+            
+            // Update UI
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            ipInput.disabled = true;
+            statusIndicator.classList.remove('status-inactive');
+            statusIndicator.classList.add('status-active');
+            statusText.textContent = 'Active';
+            monitoringIp.textContent = targetIp;
+            
+            // Add capture animation to header
+            document.querySelector('.header').classList.add('capture-active');
+            
+            terminalOutput.textContent += `\nStarting monitoring on IP: ${targetIp}`;
+            terminalOutput.scrollTop = terminalOutput.scrollHeight;
+            
+            // In a real application, you would connect to a backend service here
+            // For this demo, we'll simulate the connection
+            simulateSocketConnection();
+        }
+
+        // Stop monitoring
+        function stopMonitoring() {
+            isMonitoring = false;
+            
+            // Update UI
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            ipInput.disabled = false;
+            statusIndicator.classList.remove('status-active');
+            statusIndicator.classList.add('status-inactive');
+            statusText.textContent = 'Inactive';
+            
+            // Remove capture animation
+            document.querySelector('.header').classList.remove('capture-active');
+            
+            terminalOutput.textContent += `\nStopped monitoring on IP: ${targetIp}`;
+            terminalOutput.scrollTop = terminalOutput.scrollHeight;
+            
+            // In a real application, you would disconnect from the backend service here
+            if (socket) {
+                socket.disconnect();
+            }
+        }
+
+        // Clear captured packets
+        function clearPackets() {
+            packets = [];
+            packetList.innerHTML = '<div class="empty-state">No packets captured yet. Enter an IP address and start monitoring.</div>';
+            packetDetails.innerHTML = '<div class="empty-state">Select a packet to view details</div>';
+            hexViewer.innerHTML = '<div class="empty-state">Select a packet to view hex data</div>';
+            disassemblyViewer.innerHTML = '<div class="empty-state">Select a packet to view disassembly</div>';
+            
+            // Reset protocol stats
+            for (const protocol in protocolStats) {
+                protocolStats[protocol] = 0;
+            }
+            
+            updatePacketCount();
+            updateCharts();
+        }
+
+        // Handle terminal input
+        function handleTerminalInput(e) {
+            if (e.key === 'Enter') {
+                const command = terminalInput.value.trim();
+                
+                if (command) {
+                    // Add to history
+                    terminalHistory.push(command);
+                    historyIndex = terminalHistory.length;
+                    
+                    // Process command
+                    processCommand(command);
+                    
+                    // Clear input
+                    terminalInput.value = '';
+                }
+            } else if (e.key === 'ArrowUp') {
+                if (terminalHistory.length > 0) {
+                    if (historyIndex > 0) {
+                        historyIndex--;
+                    }
+                    terminalInput.value = terminalHistory[historyIndex] || '';
+                }
+            } else if (e.key === 'ArrowDown') {
+                if (terminalHistory.length > 0) {
+                    if (historyIndex < terminalHistory.length - 1) {
+                        historyIndex++;
+                        terminalInput.value = terminalHistory[historyIndex] || '';
+                    } else {
+                        historyIndex = terminalHistory.length;
+                        terminalInput.value = '';
+                    }
+                }
+            }
+        }
+
+        // Process terminal commands
+        function processCommand(command) {
+            terminalOutput.textContent += `\n> ${command}`;
+            
+            const parts = command.split(' ');
+            const cmd = parts[0].toLowerCase();
+            const args = parts.slice(1);
+            
+            switch (cmd) {
+                case 'help':
+                    terminalOutput.textContent += '\nAvailable commands:';
+                    terminalOutput.textContent += '\n  help - Show this help message';
+                    terminalOutput.textContent += '\n  clear - Clear the terminal';
+                    terminalOutput.textContent += '\n  start <ip> - Start monitoring an IP address';
+                    terminalOutput.textContent += '\n  stop - Stop monitoring';
+                    terminalOutput.textContent += '\n  stats - Show monitoring statistics';
+                    terminalOutput.textContent += '\n  packets - Show number of captured packets';
+                    terminalOutput.textContent += '\n  clear-packets - Clear captured packets';
+                    terminalOutput.textContent += '\n  protocols - Show protocol distribution';
+                    break;
+                    
+                case 'clear':
+                    clearTerminal();
+                    break;
+                    
+                case 'start':
+                    if (args.length === 0) {
+                        terminalOutput.textContent += '\nError: Please specify an IP address';
+                    } else {
+                        ipInput.value = args[0];
+                        startMonitoring();
+                    }
+                    break;
+                    
+                case 'stop':
+                    if (!isMonitoring) {
+                        terminalOutput.textContent += '\nError: Not currently monitoring any IP';
+                    } else {
+                        stopMonitoring();
+                    }
+                    break;
+                    
+                case 'stats':
+                    terminalOutput.textContent += `\nMonitoring Status: ${isMonitoring ? 'Active' : 'Inactive'}`;
+                    terminalOutput.textContent += `\nTarget IP: ${isMonitoring ? targetIp : 'None'}`;
+                    terminalOutput.textContent += `\nPackets Captured: ${packets.length}`;
+                    terminalOutput.textContent += '\nProtocol Distribution:';
+                    for (const protocol in protocolStats) {
+                        terminalOutput.textContent += `\n  ${protocol}: ${protocolStats[protocol]}`;
+                    }
+                    break;
+                    
+                case 'packets':
+                    terminalOutput.textContent += `\nPackets Captured: ${packets.length}`;
+                    break;
+                    
+                case 'clear-packets':
+                    clearPackets();
+                    terminalOutput.textContent += '\nCleared all captured packets';
+                    break;
+                    
+                case 'protocols':
+                    terminalOutput.textContent += '\nProtocol Distribution:';
+                    for (const protocol in protocolStats) {
+                        terminalOutput.textContent += `\n  ${protocol}: ${protocolStats[protocol]}`;
+                    }
+                    break;
+                    
+                default:
+                    terminalOutput.textContent += `\nError: Unknown command '${cmd}'`;
+            }
+            
+            terminalOutput.scrollTop = terminalOutput.scrollHeight;
+        }
+
+        // Clear terminal
+        function clearTerminal() {
+            terminalOutput.textContent = 'CyberShield Network Analyzer v1.0\nType \'help\' for available commands\n>';
+        }
+
+        // Refresh charts
+        function refreshCharts() {
+            updateCharts();
+            terminalOutput.textContent += '\nRefreshed charts';
+            terminalOutput.scrollTop = terminalOutput.scrollHeight;
+        }
+
+        // Update packet count display
+        function updatePacketCount() {
+            packetCount.textContent = packets.length;
+        }
+
+        // Update charts with current data
+        function updateCharts() {
+            protocolChart.data.datasets[0].data = Object.values(protocolStats);
+            protocolChart.update();
+        }
+
+        // Validate IP address format
+        function isValidIp(ip) {
+            const ipRegex = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+            return ipRegex.test(ip);
+        }
+
+        // Simulate socket connection (for demo purposes)
+        function simulateSocketConnection() {
+            // In a real application, you would connect to a WebSocket or Socket.io server here
+            // For this demo, we'll simulate incoming packets
+            terminalOutput.textContent += '\nConnected to packet capture service';
+            terminalOutput.scrollTop = terminalOutput.scrollHeight;
+            
+            // Simulate receiving packets periodically
+            const packetInterval = setInterval(() => {
+                if (!isMonitoring) {
+                    clearInterval(packetInterval);
+                    return;
+                }
+                
+                // Generate a random packet
+                const packet = generateRandomPacket();
+                addPacketToList(packet);
+                
+            }, 1000 + Math.random() * 2000); // Random interval between 1-3 seconds
+            
+            // Update system stats periodically
+            const statsInterval = setInterval(() => {
+                if (!isMonitoring) {
+                    clearInterval(statsInterval);
+                    return;
+                }
+                updateSystemStats();
+            }, 3000);
+        }
+
+        // Generate a random network packet (for demo purposes)
+        function generateRandomPacket() {
+            const protocols = ['TCP', 'UDP', 'ICMP', 'HTTP', 'HTTPS', 'DNS'];
+            const protocol = protocols[Math.floor(Math.random() * protocols.length)];
+            
+            // Generate random source IP (different from target)
+            let sourceIp;
+            do {
+                sourceIp = `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
+            } while (sourceIp === targetIp);
+            
+            // Generate random port numbers
+            const sourcePort = Math.floor(Math.random() * 65535);
+            const destPort = protocol === 'HTTP' ? 80 : 
+                           protocol === 'HTTPS' ? 443 : 
+                           protocol === 'DNS' ? 53 : 
+                           Math.floor(Math.random() * 65535);
+            
+            // Generate random size (64-1500 bytes)
+            const size = 64 + Math.floor(Math.random() * 1436);
+            
+            // Generate timestamp
+            const timestamp = new Date();
+            
+            // Generate random payload
+            const payload = generateRandomPayload(size);
+            
+            // Generate hex dump
+            const hexDump = generateHexDump(payload);
+            
+            // Generate disassembly (simplified)
+            const disassembly = generateDisassembly(protocol, payload);
+            
+            // Create packet object
+            const packet = {
+                id: Date.now() + Math.floor(Math.random() * 1000),
+                timestamp,
+                protocol,
+                sourceIp,
+                sourcePort,
+                destIp: targetIp,
+                destPort,
+                size,
+                payload,
+                hexDump,
+                disassembly
+            };
+            
+            // Update protocol stats
+            protocolStats[protocol]++;
+            if (protocolStats[protocol] === 1 && protocol === 'Other') {
+                // Update chart labels if this is the first "Other" packet
+                protocolChart.data.labels = Object.keys(protocolStats);
+            }
+            
+            // Update UI
+            updatePacketCount();
+            updateCharts();
+            
+            return packet;
+        }
+
+        // Generate random payload data (for demo purposes)
+        function generateRandomPayload(size) {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?/~`';
+            let payload = '';
+            
+            for (let i = 0; i < size; i++) {
+                payload += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            
+            return payload;
+        }
+
+        // Generate hex dump (for demo purposes)
+        function generateHexDump(payload) {
+            let hexDump = '';
+            const bytesPerLine = 16;
+            
+            for (let i = 0; i < payload.length; i += bytesPerLine) {
+                // Offset
+                hexDump += i.toString(16).padStart(8, '0') + '  ';
+                
+                // Hex bytes
+                const line = payload.slice(i, i + bytesPerLine);
+                let hexPart = '';
+                let asciiPart = '';
+                
+                for (let j = 0; j < line.length; j++) {
+                    const char = line.charCodeAt(j);
+                    hexPart += char.toString(16).padStart(2, '0') + ' ';
+                    
+                    // ASCII representation (printable chars only)
+                    asciiPart += (char >= 32 && char <= 126) ? line[j] : '.';
+                }
+                
+                // Pad hex part if line is short
+                hexPart = hexPart.padEnd(bytesPerLine * 3, ' ');
+                
+                hexDump += hexPart + ' ' + asciiPart + '\n';
+            }
+            
+            return hexDump;
+        }
+
+        // Generate disassembly (for demo purposes)
+        function generateDisassembly(protocol, payload) {
+            let disassembly = '';
+            const instructions = [
+                'MOV', 'PUSH', 'POP', 'ADD', 'SUB', 'MUL', 'DIV', 
+                'AND', 'OR', 'XOR', 'NOT', 'SHL', 'SHR', 'CMP', 
+                'JMP', 'JE', 'JNE', 'JG', 'JGE', 'JL', 'JLE', 
+                'CALL', 'RET', 'INT', 'LEA', 'NOP'
+            ];
+            
+            disassembly += `; ${protocol} Packet Disassembly\n`;
+            disassembly += `; Generated by CyberShield Network Analyzer\n\n`;
+            
+            // Generate some random assembly instructions
+            const numInstructions = 5 + Math.floor(Math.random() * 15);
+            for (let i = 0; i < numInstructions; i++) {
+                const instr = instructions[Math.floor(Math.random() * instructions.length)];
+                const reg1 = ['EAX', 'EBX', 'ECX', 'EDX', 'ESI', 'EDI', 'ESP', 'EBP'][Math.floor(Math.random() * 8)];
+                const reg2 = ['EAX', 'EBX', 'ECX', 'EDX', 'ESI', 'EDI', 'ESP', 'EBP'][Math.floor(Math.random() * 8)];
+                const imm = Math.floor(Math.random() * 256);
+                
+                // Randomly choose instruction format
+                const format = Math.floor(Math.random() * 3);
+                switch (format) {
+                    case 0:
+                        disassembly += `${instr} ${reg1}, ${reg2}\n`;
+                        break;
+                    case 1:
+                        disassembly += `${instr} ${reg1}, ${imm}\n`;
+                        break;
+                    case 2:
+                        disassembly += `${instr} ${reg1}\n`;
+                        break;
+                }
+            }
+            
+            return disassembly;
+        }
+
+        // Add a packet to the packet list
+        function addPacketToList(packet) {
+            packets.unshift(packet); // Add to beginning of array
+            
+            // Create packet element
+            const packetElement = document.createElement('div');
+            packetElement.className = 'packet-item';
+            packetElement.dataset.id = packet.id;
+            packetElement.innerHTML = `
+                <span class="packet-protocol">${packet.protocol}</span>
+                <span class="packet-source">${packet.sourceIp}:${packet.sourcePort}</span>
+                → 
+                <span class="packet-destination">${packet.destIp}:${packet.destPort}</span>
+                <span class="packet-size">${packet.size} bytes</span>
+                <div class="packet-time">${packet.timestamp.toLocaleTimeString()}</div>
+            `;
+            
+            // Add click handler to show packet details
+            packetElement.addEventListener('click', () => showPacketDetails(packet.id));
+            
+            // Add to the top of the list
+            if (packetList.firstChild.classList.contains('empty-state')) {
+                packetList.innerHTML = '';
+            }
+            packetList.insertBefore(packetElement, packetList.firstChild);
+        }
+
+        // Show details for a specific packet
+        function showPacketDetails(packetId) {
+            const packet = packets.find(p => p.id === packetId);
+            if (!packet) return;
+            
+            // Update details tab
+            packetDetails.innerHTML = `
+                <h3>Packet Details</h3>
+                <table>
+                    <tr><td>Timestamp:</td><td>${packet.timestamp.toLocaleString()}</td></tr>
+                    <tr><td>Protocol:</td><td>${packet.protocol}</td></tr>
+                    <tr><td>Source:</td><td>${packet.sourceIp}:${packet.sourcePort}</td></tr>
+                    <tr><td>Destination:</td><td>${packet.destIp}:${packet.destPort}</td></tr>
+                    <tr><td>Size:</td><td>${packet.size} bytes</td></tr>
+                </table>
+                <h4>Payload Preview:</h4>
+                <div class="hex-viewer">${packet.payload.substring(0, 200)}${packet.payload.length > 200 ? '...' : ''}</div>
+            `;
+            
+            // Update hex tab
+            hexViewer.textContent = packet.hexDump;
+            
+            // Update disassembly tab
+            disassemblyViewer.textContent = packet.disassembly;
+        }
+
+        // Update system statistics (simulated)
+        function updateSystemStats() {
+            // Simulate CPU usage (10-80%)
+            const simulatedCpu = 10 + Math.floor(Math.random() * 70);
+            cpuUsage.textContent = `${simulatedCpu}%`;
+            
+            // Simulate memory usage (50-500 MB)
+            const simulatedMem = 50 + Math.floor(Math.random() * 450);
+            memoryUsage.textContent = `${simulatedMem} MB`;
+        }
+
+        // Initialize the application when the DOM is loaded
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
